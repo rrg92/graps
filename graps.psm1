@@ -406,6 +406,52 @@ function Connect-GrapDeviceCode {
 }
 
 
+# Authenticates using resourc eowner password 
+function Connect-GrapRopc {
+	[CmdletBinding()]
+	param(
+		[string[]]$Scopes = '.default'
+		,$User 		= $null
+		,$Password	= $null
+	)
+	
+	$Session = Get-GrapDefaultSession;
+	
+	$ClientID 	= $Session.ClientID;
+	$Tenant	= $Session.Tenant;
+	
+	if($Scopes -NotContains 'offline_access'){
+		$Scopes += 'offline_access'
+	}
+	
+	$Session.Scope = $Scopes -Join ' ';
+	
+	if(!$User){
+		$Creds = Get-Credential
+		$User = $Creds.UserName;
+		$Password = $Creds.GetNetworkCredential().Password;
+	}
+	
+	$ReqParameters = @{
+		body = @{
+			client_id = $ClientID
+			scope = $Session.Scope
+			grant_type = 'password'
+			username = $User
+			password = $Password
+		}
+		
+		Uri = "https://login.microsoftonline.com/$tenant/oauth2/v2.0/token"
+		Method = 'POST'
+	}
+
+	$Result  = Invoke-WebRequest @ReqParameters -Verbose;
+	$JS = ConvertFrom-Json $Result;
+	$Session.RefreshToken 	= $JS.refresh_token;
+	$Session.AccessToken 	= $JS.access_token;
+}
+
+
 function Invoke-Grap {
 	[CmdletBinding()]
 	param(
@@ -413,6 +459,7 @@ function Invoke-Grap {
 		,$Method = 'GET'
 		,$Top = $null
 		,[string[]]$Select
+		,$filter
 	)
 	
 	$querystring = @()
@@ -423,6 +470,10 @@ function Invoke-Grap {
 	
 	if($select){
 		$querystring += '$select='+($select -Join ",")
+	}
+	
+	if($filter){
+		$querystring += '$filter='+$filter
 	}
 	
 	$FinalQS = $querystring -join "&";
@@ -444,7 +495,13 @@ function Invoke-Grap {
 					} -Method $Method;
 					
 				$cq = ConvertFrom-Json $q;
-				$ResultValue += $Cq.value;
+				
+				if($cq.value){
+					$ResultValue += $Cq.value;
+				} else {
+					$ResultValue += $Cq;
+				}
+				
 				
 				$NextLink = $cq."@odata.nextlink";
 				
