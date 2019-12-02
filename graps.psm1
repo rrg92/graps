@@ -245,7 +245,8 @@ $ErrorActionPreference= "Stop";
 	
 		
 
-# Prepare for authentications
+##############################################33333
+## Module session management
 Function GetSlotHash {
 	param($ClientID,$Tenant)
 	
@@ -305,7 +306,8 @@ function Get-GrapSessions {
 	return $Global:Graps_Storage.SESSIONS;
 }
 
-
+##############################################33333
+## MS RAP API IMPLEMENTATION
 # Authenticates using device code!
 function Connect-GrapDeviceCode {
 	[CmdletBinding()]
@@ -483,10 +485,11 @@ function Invoke-Grap {
 	
 	
 	$Session = Get-GrapDefaultSession;
-	$token = $Session.AccessToken;
 	
 	while($true){
 		$ResultValue = @();
+		#Get always a updated token (for refresh cases...)
+		$token = $Session.AccessToken;
 		try {
 			
 			while($true){
@@ -520,6 +523,7 @@ function Invoke-Grap {
 				$JS = ConvertFrom-Json $ex.ErrorDetails.Message
 				
 				if($JS.error.code -eq "InvalidAuthenticationToken"){
+					verbose "Token expired... Updating..."
 					Update-AccessToken;
 					continue;
 				} else {
@@ -564,6 +568,8 @@ function Update-AccessToken {
 }
 
 
+##############################################33333
+## Auliary
 function Export-GrapSession {
 	param($Session, $File)
 	
